@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <time.h>
 
-/*
+
 int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)  
 {
       int serialNo;
@@ -30,9 +30,9 @@ int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)
       printf("Error handled. %d - %s", ErrorCode, unknown);
       return 0;
   }
-*/
-int initSensor(CPhidgetInterfaceKitHandle* ifKit){
-   	CPhidgetInterfaceKit_create(&ifKit);
+
+int initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err){
+   	CPhidgetInterfaceKit_create(ifKit);
    	CPhidget_set_OnAttach_Handler((CPhidgetHandle)ifKit, AttachHandler, NULL);
  	CPhidget_set_OnError_Handler((CPhidgetHandle)ifKit, ErrorHandler, NULL);
 	CPhidget_open((CPhidgetHandle)ifKit, -1);
@@ -43,7 +43,7 @@ int initSensor(CPhidgetInterfaceKitHandle* ifKit){
          printf("Problem waiting for attachment: %s\n", err);
          return 0; 
 		}
-	return 1;
+	return 1;	}
 /*
 int initServo(CPhidgetServoHandle* servo){
 	CPhidgetServo_create(&servo);
@@ -94,11 +94,11 @@ int main(int argc, char* argv[])
 	
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
-	errorFlag = initSensor(&ifKit) + //initServo(&servo);
+	errorFlag = initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err) + //initServo(&servo);
 	if( errorFlag < 1 ){
 		return 0;
-/*	}
-	diff = 0;
+	}
+/*	diff = 0;
 	pi = acos(-1);
 	distance = 0;
 	radius = 4.5;
