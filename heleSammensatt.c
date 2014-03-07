@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <time.h>
 
-
+/*
 int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)  
 {
       int serialNo;
@@ -30,7 +30,7 @@ int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)
       printf("Error handled. %d - %s", ErrorCode, unknown);
       return 0;
   }
-
+*/
 int initSensor(CPhidgetInterfaceKitHandle* ifKit){
    	CPhidgetInterfaceKit_create(&ifKit);
    	CPhidget_set_OnAttach_Handler((CPhidgetHandle)ifKit, AttachHandler, NULL);
@@ -44,7 +44,7 @@ int initSensor(CPhidgetInterfaceKitHandle* ifKit){
          return 0; 
 		}
 	return 1;
-
+/*
 int initServo(CPhidgetServoHandle* servo){
 	CPhidgetServo_create(&servo);
     CPhidget_set_OnAttach_Handler((CPhidgetHandle)servo, AttachHandler, NULL);
@@ -83,7 +83,7 @@ double getThrust(double currentPosition,double desiredPostition,double *integral
 	integral = integral + error*dt;
 	return kp*error + ki*(*integral);
 
-
+*/
 int main(int argc, char* argv[])
   {
 	int diff, temporaryCount, result, sensorValue, speed;
@@ -94,10 +94,10 @@ int main(int argc, char* argv[])
 	
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
-	errorFlag = initSensor(&ifKit) + initServo(&servo);
-	if( errorFlag < 2 ){
+	errorFlag = initSensor(&ifKit) + //initServo(&servo);
+	if( errorFlag < 1 ){
 		return 0;
-	}
+/*	}
 	diff = 0;
 	pi = acos(-1);
 	distance = 0;
@@ -130,7 +130,7 @@ int main(int argc, char* argv[])
 	printf("Closing...\n");
 	CPhidget_close((CPhidgetHandle)servo);
 	CPhidget_delete((CPhidgetHandle)servo);
-	return 0;
+*/	return 0;
 
  }
 
