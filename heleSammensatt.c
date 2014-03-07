@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
 	
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
-	errorFlag = initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err) + //initServo(&servo);
+	errorFlag = initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err);  //initServo(&servo);
 	if( errorFlag < 1 ){
 		return 0;
 	}
