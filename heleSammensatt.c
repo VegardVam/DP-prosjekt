@@ -31,8 +31,10 @@ int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)
       return 0;
   }
 
-int initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err){
-   	CPhidgetInterfaceKit_create(ifKit);
+int initSensor(CPhidgetInterfaceKitHandle ifKit ){
+	int result;
+	const char *err;
+   	CPhidgetInterfaceKit_create(&ifKit);
    	CPhidget_set_OnAttach_Handler((CPhidgetHandle)ifKit, AttachHandler, NULL);
  	CPhidget_set_OnError_Handler((CPhidgetHandle)ifKit, ErrorHandler, NULL);
 	CPhidget_open((CPhidgetHandle)ifKit, -1);
@@ -41,11 +43,12 @@ int initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err){
   	if((result = CPhidget_waitForAttachment((CPhidgetHandle)ifKit, 10000))) {
          CPhidget_getErrorDescription(result, &err);
          printf("Problem waiting for attachment: %s\n", err);
-         return 0; 
-		}
+         return 0; }
 	return 1;	}
-/*
-int initServo(CPhidgetServoHandle* servo){
+
+int initServo(CPhidgetServoHandle servo){
+	int result;
+	const char *err;
 	CPhidgetServo_create(&servo);
     CPhidget_set_OnAttach_Handler((CPhidgetHandle)servo, AttachHandler, NULL);
     CPhidget_set_OnDetach_Handler((CPhidgetHandle)servo, DetachHandler, NULL);
@@ -55,13 +58,16 @@ int initServo(CPhidgetServoHandle* servo){
     if((result = CPhidget_waitForAttachment((CPhidgetHandle)servo, 10000))){
         CPhidget_getErrorDescription(result, &err);
         printf("Problem waiting for attachment: %s\n", err);
-        return 0;}
-     }
-	return 1;
+        return 0;	}
+	return 1;	}
 
 double getDistance(CPhidgetInterfaceKitHandle ifKit){
-	double currentPosition;
-	int temporaryCount, sensorValue;
+	double currentPosition, radius, distance, pi;
+	int temporaryCount, sensorValue, diff;
+	diff = 0;
+	pi = acos(-1);
+	distance = 0;
+	radius = 4.5;
 
     CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);
   	temporaryCount = sensorValue;
@@ -75,42 +81,31 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit){
 		diff = (diff + sensorValue - temporaryCount);   
  	currentPosition = 2*pi*radius*diff/1000;
  	return currentPosition; }
- 
-double getThrust(double currentPosition,double desiredPostition,double *integral)
-	int previousError = 0;
-		//her *integral
+
+double getThrust(double currentPosition,double desiredPostition);
+	//int previousError = 0;
+	double ki, kp, error, integral, dt;	
+	//her *integral
 	error = desiredPostition - currentPosition;
 	integral = integral + error*dt;
 	return kp*error + ki*(*integral);
 
-*/
 int main(int argc, char* argv[])
   {
-	int diff, temporaryCount, result, sensorValue, speed;
-	const char *err;
-	int errorFlag;
-	double pi, distance, radius;
+	int  temporaryCount, result, sensorValue, errorFlag;
+	double a, b;
 	double integral=0;
 	
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
-	errorFlag = initSensor(CPhidgetInterfaceKitHandle* ifKit, int result, const char *err);  //initServo(&servo);
-	if( errorFlag < 1 ){
+	errorFlag = initSensor(ifKit) + initServo(servo);
+	if( errorFlag < 2 ){
 		return 0;
 	}
-/*	diff = 0;
-	pi = acos(-1);
-	distance = 0;
-	radius = 4.5;
-	speed = 100;
-
-	while (speed < 150){   //her &integral
-		clock_t start = clock(), dt;
-		CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);	
-		temporaryCount = sensorValue;
-		sleep(1);
-		CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);	
-		diff = diff + sensorValue - temporaryCount;
+	
+	a = getDistance(ifKit);
+	b = getThrust(currentPosition, desiredPostition);
+/*		diff = diff + sensorValue - temporaryCount;
 		distance = 2*pi*radius*diff/1000;
 		printf("The boat is now %fcm from the right end.\n",distance);
 		speed = speed + 10;
@@ -130,8 +125,6 @@ int main(int argc, char* argv[])
 	printf("Closing...\n");
 	CPhidget_close((CPhidgetHandle)servo);
 	CPhidget_delete((CPhidgetHandle)servo);
-*/	return 0;
-
- }
+*/	return 0;	}
 
 
