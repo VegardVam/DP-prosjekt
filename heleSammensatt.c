@@ -82,18 +82,20 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit){
  	currentPosition = 2*pi*radius*diff/1000;
  	return currentPosition; }
 
-double getThrust(double currentPosition,double desiredPostition);
+double getThrust(double currentPosition,double desiredPostition){
 	//int previousError = 0;
 	double ki, kp, error, integral, dt;	
 	//her *integral
+	kp = 0.1;
+	ki = 0.1;
 	error = desiredPostition - currentPosition;
 	integral = integral + error*dt;
-	return kp*error + ki*(*integral);
+	return kp*error + ki*integral;	}
 
 int main(int argc, char* argv[])
   {
 	int  temporaryCount, result, sensorValue, errorFlag;
-	double a, b;
+	double a, b, currentPosition, desiredPostition;
 	double integral=0;
 	
 	CPhidgetServoHandle servo = 0;
