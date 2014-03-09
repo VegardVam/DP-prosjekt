@@ -31,31 +31,31 @@ int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)
       return 0;
   }
 
-int initSensor(CPhidgetInterfaceKitHandle ifKit ){
+int initSensor(CPhidgetInterfaceKitHandle *ifKit ){
 	int result;
 	const char *err;
-   	CPhidgetInterfaceKit_create(&ifKit);
-   	CPhidget_set_OnAttach_Handler((CPhidgetHandle)ifKit, AttachHandler, NULL);
- 	CPhidget_set_OnError_Handler((CPhidgetHandle)ifKit, ErrorHandler, NULL);
-	CPhidget_open((CPhidgetHandle)ifKit, -1);
+   	CPhidgetInterfaceKit_create(ifKit);
+   	CPhidget_set_OnAttach_Handler((CPhidgetHandle)*ifKit, AttachHandler, NULL);
+ 	CPhidget_set_OnError_Handler((CPhidgetHandle)*ifKit, ErrorHandler, NULL);
+	CPhidget_open((CPhidgetHandle)*ifKit, -1);
 
 	printf("Waiting for interface kit to be attached....");
-  	if((result = CPhidget_waitForAttachment((CPhidgetHandle)ifKit, 10000))) {
+  	if((result = CPhidget_waitForAttachment((CPhidgetHandle)*ifKit, 10000))) {
          CPhidget_getErrorDescription(result, &err);
          printf("Problem waiting for attachment: %s\n", err);
          return 0; }
 	return 1;	}
 
-int initServo(CPhidgetServoHandle servo){
+int initServo(CPhidgetServoHandle *servo){
 	int result;
 	const char *err;
-	CPhidgetServo_create(&servo);
-    CPhidget_set_OnAttach_Handler((CPhidgetHandle)servo, AttachHandler, NULL);
-    CPhidget_set_OnDetach_Handler((CPhidgetHandle)servo, DetachHandler, NULL);
-    CPhidget_set_OnError_Handler((CPhidgetHandle)servo, ErrorHandler, NULL);
-    CPhidget_open((CPhidgetHandle)servo, -1);
+	CPhidgetServo_create(servo);
+    CPhidget_set_OnAttach_Handler((CPhidgetHandle)*servo, AttachHandler, NULL);
+    CPhidget_set_OnDetach_Handler((CPhidgetHandle)*servo, DetachHandler, NULL);
+    CPhidget_set_OnError_Handler((CPhidgetHandle)*servo, ErrorHandler, NULL);
+    CPhidget_open((CPhidgetHandle)*servo, -1);
     printf("Waiting for Servo controller to be attached....");
-    if((result = CPhidget_waitForAttachment((CPhidgetHandle)servo, 10000))){
+    if((result = CPhidget_waitForAttachment((CPhidgetHandle)*servo, 10000))){
         CPhidget_getErrorDescription(result, &err);
         printf("Problem waiting for attachment: %s\n", err);
         return 0;	}
@@ -82,13 +82,8 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit){
  	currentPosition = 2*pi*radius*diff/1000;
  	return currentPosition; }
 
-double returnShit(int a, int b){
-	return a+b;
-}
-
-double getThrust(double currentPosition,double desiredPostition){
-	//int previousError = 0;
-	double ki, kp, error, integral, dt;	
+double getThrust(double currentPosition,double desiredPostition, double dt){
+	double ki, kp, error, integral;	
 	//her *integral
 	kp = 0.1;
 	ki = 0.1;
@@ -96,29 +91,37 @@ double getThrust(double currentPosition,double desiredPostition){
 	integral = integral + error*dt;
 	return kp*error + ki*integral;	}
 
+void giveThust(CPhidgetServoHandle servo, double thrust)	{
+	 CPhidgetServo_setPosition(servo, 0, thrust);}
+
 int main(int argc, char* argv[])
   {
-	int  temporaryCount, result, sensorValue, errorFlag;
-	double a, b, currentPosition, desiredPostition;
+	int temporaryCount, result, sensorValue, errorFlag;
+	double thrust, currentPosition, desiredPostition, dt;
 	double integral=0;
 	
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
-	errorFlag = initSensor(ifKit) + initServo(servo);
+	errorFlag = initSensor(&ifKit) + initServo(&servo);
 	if( errorFlag < 2 ){
 		return 0;
 	}
 	
-	a = getDistance(ifKit);
-	b = getThrust(currentPosition, desiredPostition);
-/*		diff = diff + sensorValue - temporaryCount;
-		distance = 2*pi*radius*diff/1000;
-		printf("The boat is now %fcm from the right end.\n",distance);
-		speed = speed + 10;
-		CPhidgetServo_setPosition (servo, 0, speed);
-		dt = clock() - start      }
+	time_t start, end;
+	time(&start); 
+	desiredPostition = 30; //her kommer en scanf etterhvert
 
+	while (1){
+		time(&end);
+		dt = difftime(end,start);
+		time(&start);
+		currentPosition = getDistance(ifKit);
+		thrust = getThrust(currentPosition, desiredPostition, dt);	
+		giveThust(servo, thrust);
+	}
+	
 
+	//avslutter
 	printf("Disengage. Press any key to Continue\n");
 	getchar();
 
@@ -131,6 +134,6 @@ int main(int argc, char* argv[])
 	printf("Closing...\n");
 	CPhidget_close((CPhidgetHandle)servo);
 	CPhidget_delete((CPhidgetHandle)servo);
-*/	return 0;	}
+	return 0;	}
 
 
