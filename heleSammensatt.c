@@ -94,11 +94,24 @@ double getThrust(double currentPosition,double desiredPostition, double dt){
 void giveThust(CPhidgetServoHandle servo, double thrust)	{
 	 CPhidgetServo_setPosition(servo, 0, thrust);}
 
+
+// returns time since tstart was executed using the command :
+// clock_gettime(CLOCK_REALTIME, &tstart);
+// to use this function -lrt must be included in as gcc command
+double getTime(struct timespec tstart){
+	struct timespec	tend; 
+	double timeDiff;
+  	clock_gettime(CLOCK_REALTIME, &tend);
+	timeDiff=(double)(tend.tv_sec + (double)tend.tv_nsec/1000000000  - (tstart.tv_sec + (double)tstart.tv_nsec/1000000000) )  ;
+	return a;
+}
+
 int main(int argc, char* argv[])
   {
 	int temporaryCount, result, sensorValue, errorFlag;
 	double thrust, currentPosition, desiredPostition, dt;
 	double integral=0;
+	struct timespec tstart; 
 	
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
@@ -107,17 +120,16 @@ int main(int argc, char* argv[])
 		return 0;
 	}
 	
-	time_t start, end;
-	time(&start); 
 	desiredPostition = 30; //her kommer en scanf etterhvert
+  	clock_gettime(CLOCK_REALTIME, &tstart);
 
 	while (1){
-		time(&end);
-		dt = difftime(end,start);
+		dt = getTime(tstart);
 		time(&start);
 		currentPosition = getDistance(ifKit);
 		thrust = getThrust(currentPosition, desiredPostition, dt);	
 		giveThust(servo, thrust);
+		usleep(100); // sleep 100 microseconds
 	}
 	
 
