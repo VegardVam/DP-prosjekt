@@ -82,6 +82,10 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit){
  	currentPosition = 2*pi*radius*diff/1000;
  	return currentPosition; }
 
+double returnShit(int a, int b){
+	return a+b;
+}
+
 double getThrust(double currentPosition,double desiredPostition){
 	//int previousError = 0;
 	double ki, kp, error, integral, dt;	
