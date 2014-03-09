@@ -82,8 +82,8 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit){
  	currentPosition = 2*pi*radius*diff/1000;
  	return currentPosition; }
 
-double getThrust(double currentPosition,double desiredPostition, double dt){
-	double ki, kp, error, integral;	
+double getThrust(double currentPosition,double desiredPostition, double integral,  double dt){
+	double ki, kp, error;	
 	//her *integral
 	kp = 0.1;
 	ki = 0.1;
@@ -103,7 +103,7 @@ double getTime(struct timespec tstart){
 	double timeDiff;
   	clock_gettime(CLOCK_REALTIME, &tend);
 	timeDiff=(double)(tend.tv_sec + (double)tend.tv_nsec/1000000000  - (tstart.tv_sec + (double)tstart.tv_nsec/1000000000) )  ;
-	return a;
+	return timeDiff;
 }
 
 int main(int argc, char* argv[])
@@ -125,9 +125,9 @@ int main(int argc, char* argv[])
 
 	while (1){
 		dt = getTime(tstart);
-		time(&start);
+  		clock_gettime(CLOCK_REALTIME, &tstart);
 		currentPosition = getDistance(ifKit);
-		thrust = getThrust(currentPosition, desiredPostition, dt);	
+		thrust = getThrust(currentPosition, desiredPostition, integral, dt);	
 		giveThust(servo, thrust);
 		usleep(100); // sleep 100 microseconds
 	}
