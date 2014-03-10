@@ -61,7 +61,7 @@ int initServo(CPhidgetServoHandle *servo){
         return 0;	}
 	return 1;	}
 
-double getDistance(CPhidgetInterfaceKitHandle ifKit, double diff){
+double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){
 	double currentPosition, radius, pi;
 	int temporaryCount, sensorValue;
 //	diff = 0;
@@ -73,24 +73,25 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit, double diff){
  	sleep(1);
     CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);
     if ((sensorValue - temporaryCount) < (-800))
-		diff = (diff + 1000 + sensorValue - temporaryCount); 
+		*diff = (*diff + 1000 + sensorValue - temporaryCount); 
  	else if ((sensorValue - temporaryCount) > 800) 
- 		diff = (diff - 1000 + sensorValue - temporaryCount); 
+ 		*diff = (*diff - 1000 + sensorValue - temporaryCount); 
  	else
-		diff = (diff + sensorValue - temporaryCount);   
- 	currentPosition = 2*pi*radius*diff/1000;
+		*diff = (*diff + sensorValue - temporaryCount);   
+ 	currentPosition = 2*pi*radius**diff/1000;
  	return currentPosition; }
 
 double getThrust(double currentPosition,double desiredPostition, double integral,  double dt){
 	double ki, kp, error;	
 	//her *integral
-	kp = 2;
-	ki = 2;
+	kp = 1;
+	ki = 1;
 	error = desiredPostition - currentPosition;
 	integral = integral + error*dt;
 	return kp*error + ki*integral;	}
 
-void giveThust(CPhidgetServoHandle servo, double thrust)	{
+void giveThust(CPhidgetServoHandle servo, double thrust, double currentPosition)	{
+	thrust = 100 + ((60/ *currentPosition)* *thrust);
 	 CPhidgetServo_setPosition(servo, 0, thrust);}
 
 
@@ -128,11 +129,11 @@ int main(int argc, char* argv[])
 	while (1){
 		dt = getTime(tstart);
   		clock_gettime(CLOCK_REALTIME, &tstart);
-		currentPosition = getDistance(ifKit, diff);
+		currentPosition = getDistance(ifKit, &diff);
 		thrust = getThrust(currentPosition, desiredPostition, integral, dt);	
 		printf("The boat is now %f from the right side\n", currentPosition);
 		printf("The thrust is now %f\n", thrust);
-		giveThust(servo, thrust);
+		giveThust(servo, &thrust, &currentPosition);
 		usleep(100); // sleep 100 microseconds
 	}
 	
