@@ -70,7 +70,7 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){
 
     CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);
   	temporaryCount = sensorValue;
- 	sleep(1);
+	usleep(50); // sleep 100 microseconds
     CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);
     if ((sensorValue - temporaryCount) < (-800))
 		*diff = (*diff + 1000 + sensorValue - temporaryCount); 
@@ -78,7 +78,7 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){
  		*diff = (*diff - 1000 + sensorValue - temporaryCount); 
  	else
 		*diff = (*diff + sensorValue - temporaryCount);   
- 	currentPosition = 2*pi*radius**diff/1000;
+ 	currentPosition = 2*pi*radius*(*diff)/1000;
  	return currentPosition; }
 
 double getThrust(double currentPosition,double desiredPostition, double integral,  double dt){
@@ -90,8 +90,8 @@ double getThrust(double currentPosition,double desiredPostition, double integral
 	integral = integral + error*dt;
 	return kp*error + ki*integral;	}
 
-void giveThust(CPhidgetServoHandle servo, double thrust, double currentPosition)	{
-	thrust = 100 + ((60/ *currentPosition)* *thrust);
+void giveThust(CPhidgetServoHandle servo, double thrust)	{
+	thrust = 100 + thrust;
 	 CPhidgetServo_setPosition(servo, 0, thrust);}
 
 
@@ -109,39 +109,42 @@ double getTime(struct timespec tstart){
 int main(int argc, char* argv[])
   {
 	int temporaryCount, result, sensorValue, errorFlag;
-	double thrust, currentPosition, desiredPostition, dt;
+	double thrust, currentPosition, desiredPostition, dt, runTime, dpTime;
 	double integral=0;
 	double diff = 0;
-	struct timespec tstart; 
-	
-	CPhidgetServoHandle servo = 0;
+	struct timespec dtStart, runTimeStart; 
+	printf("Where do you want the boat to be positioned? Specify in centimeteres from the right side: ");
+	scanf("%lf", &desiredPostition);	
+	printf("For how long do you want the program to run? Specify time in seconds: ");
+	scanf("%lf", &dpTime);
+/*	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
 //	printf("The boat is now %f from the right side", currentPosition);
 	errorFlag = initSensor(&ifKit) + initServo(&servo);
 	if( errorFlag < 2 ){
 		return 0;
 	}
-	
-	desiredPostition = 30; //her kommer en scanf etterhvert
-  	clock_gettime(CLOCK_REALTIME, &tstart);
+*/	
+  	clock_gettime(CLOCK_REALTIME, &dtStart);
+	runTime = getTime(runTimeStart);
 //	currentPosition = getDistance(ifKit);
 	printf("The boat is now %f from the right side", currentPosition);
-	while (1){
-		dt = getTime(tstart);
-  		clock_gettime(CLOCK_REALTIME, &tstart);
-		currentPosition = getDistance(ifKit, &diff);
+	while (dpTime>runTime){
+		dt = getTime(dtStart);
+  		clock_gettime(CLOCK_REALTIME, &dtStart);
+/*		currentPosition = getDistance(ifKit, &diff);
 		thrust = getThrust(currentPosition, desiredPostition, integral, dt);	
 		printf("The boat is now %f from the right side\n", currentPosition);
 		printf("The thrust is now %f\n", thrust);
 		giveThust(servo, &thrust, &currentPosition);
-		usleep(100); // sleep 100 microseconds
+*/		clock_gettime(CLOCK_REALTIME, &runTimeStart);
 	}
 	
 
 	//avslutter
 	printf("Disengage. Press any key to Continue\n");
 	getchar();
-
+/*
 	CPhidgetServo_setEngaged (servo, 0, 0);
 
 	printf("Press any key to end\n");
@@ -151,6 +154,6 @@ int main(int argc, char* argv[])
 	printf("Closing...\n");
 	CPhidget_close((CPhidgetHandle)servo);
 	CPhidget_delete((CPhidgetHandle)servo);
-	return 0;	}
+*/	return 0;	}
 
 
