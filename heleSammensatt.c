@@ -6,7 +6,7 @@
 
 
 int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)  
-{
+{	//
       int serialNo;
       const char *name;
       CPhidget_getDeviceName(IFK, &name);
@@ -31,7 +31,7 @@ int CCONV AttachHandler(CPhidgetHandle IFK, void *userptr)
       return 0;
   }
 
-int initSensor(CPhidgetInterfaceKitHandle *ifKit ){
+int initSensor(CPhidgetInterfaceKitHandle *ifKit){	//Initializes the position sensor. Creates handle for the interface, attachHandler and errorHandle
 	int result;
 	const char *err;
    	CPhidgetInterfaceKit_create(ifKit);
@@ -40,13 +40,13 @@ int initSensor(CPhidgetInterfaceKitHandle *ifKit ){
 	CPhidget_open((CPhidgetHandle)*ifKit, -1);
 
 	printf("Waiting for interface kit to be attached....");
-  	if((result = CPhidget_waitForAttachment((CPhidgetHandle)*ifKit, 5000))) {
+  	if((result = CPhidget_waitForAttachment((CPhidgetHandle)*ifKit, 5000))) {	//Waits for 5 sec for attachment then timeout
          CPhidget_getErrorDescription(result, &err);
          printf("Problem waiting for attachment: %s\n", err);
          return 0; }
 	return 1;	}
 
-int initServo(CPhidgetServoHandle *servo){
+int initServo(CPhidgetServoHandle *servo){			//Initializes the position sensor. Creates handle for the interface, attachHandler and errorHandle
 	int result;
 	const char *err;
 	CPhidgetServo_create(servo);
@@ -55,13 +55,13 @@ int initServo(CPhidgetServoHandle *servo){
     CPhidget_set_OnError_Handler((CPhidgetHandle)*servo, ErrorHandler, NULL);
     CPhidget_open((CPhidgetHandle)*servo, -1);
     printf("Waiting for Servo controller to be attached....");
-    if((result = CPhidget_waitForAttachment((CPhidgetHandle)*servo, 5000))){
+    if((result = CPhidget_waitForAttachment((CPhidgetHandle)*servo, 5000))){	//Waits for 5 sec for attachment then timeout
         CPhidget_getErrorDescription(result, &err);
         printf("Problem waiting for attachment: %s\n", err);
         return 0;	}
 	return 1;	}
 
-double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){
+double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){	//gets distance from the potMeter and checks if the potMeter goes a hole round
 	double currentPosition, radius, pi;
 	int temporaryCount, sensorValue;
 //	diff = 0;
@@ -70,7 +70,7 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){
 
     CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);
   	temporaryCount = sensorValue;
-	usleep(50); // sleep 100 microseconds
+	usleep(100000); 
     CPhidgetInterfaceKit_getSensorValue(ifKit, 0, &sensorValue);
     if ((sensorValue - temporaryCount) < (-800))
 		*diff = (*diff + 1000 + sensorValue - temporaryCount); 
@@ -81,16 +81,20 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff){
  	currentPosition = 2*pi*radius*(*diff)/1000;
  	return currentPosition; }
 
-double getThrust(double currentPosition,double desiredPostition, double integral,  double dt){
+double getThrust(double currentPosition,double desiredPostition, double *integral,  double dt){	//The PI-controller 
 	double ki, kp, error;	
-	//her *integral
 	kp = 1;
-	ki = 1;
+	ki = 0.5;
 	error = desiredPostition - currentPosition;
-	integral = integral + error*dt;
-	return kp*error + ki*integral;	}
+	if ((*integral + error*dt)*ki + error*kp > 45)	//The servo gives forward thrust between 100 and 160. 
+		return 50;
+	else if ((*integral + error*dt)*ki + error*dt < 0)
+		return 0;
+	else
+		*integral = *integral + error*dt;
+	return kp*error + ki*(*integral);	}
 
-void giveThust(CPhidgetServoHandle servo, double thrust)	{
+void giveThrust(CPhidgetServoHandle servo, double thrust)	{	//sends thrust to the servo
 	thrust = 100 + thrust;
 	 CPhidgetServo_setPosition(servo, 0, thrust);}
 
@@ -98,7 +102,7 @@ void giveThust(CPhidgetServoHandle servo, double thrust)	{
 // returns time since tstart was executed using the command :
 // clock_gettime(CLOCK_REALTIME, &tstart);
 // to use this function -lrt must be included in as gcc command
-double getTime(struct timespec tstart){
+double getTime(struct timespec tstart){		//timer for the dt and runTime
 	struct timespec	tend; 
 	double timeDiff;
   	clock_gettime(CLOCK_REALTIME, &tend);
@@ -117,34 +121,32 @@ int main(int argc, char* argv[])
 	scanf("%lf", &desiredPostition);	
 	printf("For how long do you want the program to run? Specify time in seconds: ");
 	scanf("%lf", &dpTime);
-/*	CPhidgetServoHandle servo = 0;
+	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
-//	printf("The boat is now %f from the right side", currentPosition);
 	errorFlag = initSensor(&ifKit) + initServo(&servo);
 	if( errorFlag < 2 ){
 		return 0;
 	}
-*/	
+	giveThrust(servo, 1);
+	sleep(3);
   	clock_gettime(CLOCK_REALTIME, &dtStart);
-	runTime = getTime(runTimeStart);
-//	currentPosition = getDistance(ifKit);
-	printf("The boat is now %f from the right side", currentPosition);
-	while (dpTime>runTime){
+	clock_gettime(CLOCK_REALTIME, &runTimeStart);
+	while ( dpTime>runTime ) {
 		dt = getTime(dtStart);
   		clock_gettime(CLOCK_REALTIME, &dtStart);
-/*		currentPosition = getDistance(ifKit, &diff);
-		thrust = getThrust(currentPosition, desiredPostition, integral, dt);	
+		currentPosition = getDistance(ifKit, &diff);
+		thrust = getThrust(currentPosition, desiredPostition, &integral, dt);	
 		printf("The boat is now %f from the right side\n", currentPosition);
 		printf("The thrust is now %f\n", thrust);
-		giveThust(servo, &thrust, &currentPosition);
-*/		clock_gettime(CLOCK_REALTIME, &runTimeStart);
+		giveThrust(servo, thrust);
+		runTime = getTime(runTimeStart);
 	}
 	
 
 	//avslutter
 	printf("Disengage. Press any key to Continue\n");
 	getchar();
-/*
+
 	CPhidgetServo_setEngaged (servo, 0, 0);
 
 	printf("Press any key to end\n");
@@ -154,6 +156,6 @@ int main(int argc, char* argv[])
 	printf("Closing...\n");
 	CPhidget_close((CPhidgetHandle)servo);
 	CPhidget_delete((CPhidgetHandle)servo);
-*/	return 0;	}
+	return 0;	}
 
 
