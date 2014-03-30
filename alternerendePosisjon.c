@@ -116,13 +116,13 @@ double getDistance(CPhidgetInterfaceKitHandle ifKit, double *diff)	//gets distan
 double getThrust(double currentPosition,double desiredPostition, double *integral,  double dt)	//The PI-controller 
 {
 	double ki, kp, error;	
-	kp = 1;
-	ki = 0.4;
+	kp = 3;
+	ki = 1;
 	error = desiredPostition - currentPosition;
 	if ((*integral + error*dt)*ki + error*kp > 60)	//The servo gives forward thrust between 100 and 160. 
-		return ki*(*integral) + kp*error;
+		return 60;
 	else if ((*integral + error*dt)*ki + error*kp < 0)
-		return ki*(*integral) + kp*error;
+		return 0;
 	else
 		*integral = *integral + error*dt;
 	return kp*error + ki*(*integral);	
@@ -146,23 +146,56 @@ double getTime(struct timespec tstart)		//timer for the dt and runTime
 	return timeDiff;
 }
 
+ /* This function filters the constant reference to obtain a smooth reference to the PI controller */
+double getReference( double ys[3], double us[3]  )
+{
+	double num[3] ={ 0.0000, 0.0000498, 0.0000495 };
+	double denum[3] ={ 1.0000, -1.9859982, 0.9860975 };
+	ys[2]=ys[1];
+    ys[1]=ys[0];
+    ys[0]= -(denum[1]) * (ys[1]) -(denum[2]) * (ys[2]) + num[1]*us[1] + num[2]*us[2];
+    return ys[0];
+}
+
+double inPosition( int *inPositionCount, double currentPosition, double desiredPostition, double dt, double *timeInPosition )
+{
+	double error;
+	error = (currentPosition - desiredPostition);
+	printf("count %d", *inPositionCount);
+	if ( fabs(error) < 1.5 ) {
+		if ( *inPositionCount > 150 )
+			*timeInPosition = (*timeInPosition + dt);
+		*inPositionCount =*inPositionCount + 1; }
+	else 
+		*inPositionCount = 0;
+	return *timeInPosition;
+}
+
 int main(int argc, char* argv[])
 {
-	int temporaryCount, result, sensorValue, errorFlag;
-	double thrust, currentPosition, desiredPostition, dt, runTime, dpTime;
+	int temporaryCount, result, sensorValue, errorFlag, i, secondPosition;
+	double thrust, currentPosition, desiredPostition, dt, runTime, dpTime, firstPostition, nextPosition;
+	int inPositionCount = 0;
 	double integral=0;
 	double diff = 0;
-	struct timespec dtStart, runTimeStart;
+	double ys[]={0,0,0};    // < output from reference system
+	double timeInPosition = 0;
 	FILE *f = fopen("dataTable.dat", "w");
-	FILE *dtfil = fopen("deltaT.dat", "w");
+	char * commandsForGnuplot[] = {"set title \"DP-oversikt\"", "plot 'dataTable.dat' using 1:2 title 'Desired position' with lines,  'dataTable.dat' using 1:3 title 'Position' wi    th lines, 'dataTable.dat' using 1:4 title 'Thrust' with lines,  'dataTable.dat' using 1:5 title 'Integral' with lines"};
+	
 	if (f == NULL)	
 	{
 		printf("Error opening file\n");
 		return(1);
 	}
 	printf("Where do you want the boat to be positioned? Specify in centimeteres from the right side: ");
-	scanf("%lf", &desiredPostition);	
-	printf("For how long do you want the program to run? Specify time in seconds: ");
+	scanf("%lf", &firstPostition);	
+	printf("Please state the next position you would like the boat to be positioned in: ");
+	scanf("%lf", &nextPosition);
+	printf("For how long do you want the program to run? The DP-program will alternate to place the boat to the desired position until the time is over. Specify time in seconds: ");
+  	desiredPostition = firstPostition;
+	double us[]={desiredPostition,desiredPostition,desiredPostition}; // < input from reference system
+	struct timespec dtStart, runTimeStart;
 	scanf("%lf", &dpTime);
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
@@ -175,23 +208,36 @@ int main(int argc, char* argv[])
 	clock_gettime(CLOCK_REALTIME, &runTimeStart);
 	while ( dpTime>runTime ) 
 	{
-		dt = getTime(dtStart);
-  		clock_gettime(CLOCK_REALTIME, &dtStart);
-		currentPosition = getDistance(ifKit, &diff);
-		thrust = getThrust(currentPosition, desiredPostition, &integral, dt);	
-		giveThrust(servo, thrust);
-		runTime = getTime(runTimeStart);
-		fprintf(f, "%f	%f	%f	%f %f\n", runTime, desiredPostition, currentPosition, thrust, integral);
-		fprintf(dtfil, "%f	%f\n", runTime, dt);
+		dt = getTime( dtStart );
+  		clock_gettime( CLOCK_REALTIME, &dtStart );
+		currentPosition = getDistance( ifKit, &diff );
+		desiredPostition = getReference(ys,us);
+		thrust = getThrust( currentPosition, desiredPostition, &integral, dt );	
+		giveThrust( servo, thrust );
+		runTime = getTime( runTimeStart );
+		timeInPosition = inPosition( &inPositionCount, currentPosition, desiredPostition, dt, &timeInPosition );	
+		if ( timeInPosition > 5 && secondPosition == 0 )
+		{
+			us[]={nextPosition,nextPosition,nextPosition};
+			desiredPostition = getReference(ys,us);
+			secondPosition = 1;
+		}
+		else if ( timeInPosition > 5 && secondPosition == 1 )
+		{ 
+			us[] = {firstPostition, firstPostition, firstPostition};
+			desiredPostition = getReference(ys,us);
+			secondPosition = 0;
+		}	 
+		fprintf(f, "%f	%f	%f	%f %f \n", runTime, desiredPostition, currentPosition, thrust, integral);
 	}
 	
-	//avslutter
-//	char *commandsForGnuplot[] = {"set
-//	FILE *gnuPlotPipe = popen("gnuplot -persisent", "w");
-
-//	fprintf(gnuPlotPipe, "plot '%s' using 1:2 title 'Desired position' with lines,  '%s' using 1:3 title 'Position' with lines, '%s' using 1:4 title 'Thrust' with lines,  '%s' using 1:5 title 'Integral' with lines","dataTable.dat","dataTable.dat", "dataTable.dat", "dataTable.dat");
-//	pclose(gnuPlotPipe);
+	FILE * gnuplotPipe = popen ("gnuplot -persistent", "w");
 	
+	for ( i=0; i < 2; i++)
+	{
+   	fprintf(gnuplotPipe, "%s \n", commandsForGnuplot[i]); //Send commands to gnuplot one by one.
+	}
+
 	printf("Disengage. Press any key to Continue\n");
 	getchar();
 	CPhidgetServo_setEngaged (servo, 0, 0);
@@ -201,5 +247,6 @@ int main(int argc, char* argv[])
 	CPhidget_close((CPhidgetHandle)servo);
 	CPhidget_delete((CPhidgetHandle)servo);
 	fclose(f);
+	pclose(gnuplotPipe);
 	return 0;	
 }
