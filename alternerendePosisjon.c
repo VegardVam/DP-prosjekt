@@ -161,7 +161,7 @@ double inPosition( int *inPositionCount, double currentPosition, double desiredP
 {
 	double error;
 	error = (currentPosition - desiredPostition);
-	printf("count %d", *inPositionCount);
+	printf("count %d\n", *inPositionCount);
 	if ( fabs(error) < 1.5 ) {
 		if ( *inPositionCount > 150 )
 			*timeInPosition = (*timeInPosition + dt);
@@ -181,7 +181,7 @@ int main(int argc, char* argv[])
 	double ys[]={0,0,0};    // < output from reference system
 	double timeInPosition = 0;
 	FILE *f = fopen("dataTable.dat", "w");
-	char * commandsForGnuplot[] = {"set title \"DP-oversikt\"", "plot 'dataTable.dat' using 1:2 title 'Desired position' with lines,  'dataTable.dat' using 1:3 title 'Position' wi    th lines, 'dataTable.dat' using 1:4 title 'Thrust' with lines,  'dataTable.dat' using 1:5 title 'Integral' with lines"};
+	char * commandsForGnuplot[] = {"set title \"DP-oversikt\"", "plot 'dataTable.dat' using 1:2 title 'Desired position' with lines, 'dataTable.dat' using 1:3 title 'Position' with lines, 'dataTable.dat' using 1:4 title 'Thrust' with lines, 'dataTable.dat' using 1:5 title 'Integral' with lines"};
 	
 	if (f == NULL)	
 	{
@@ -218,17 +218,22 @@ int main(int argc, char* argv[])
 		timeInPosition = inPosition( &inPositionCount, currentPosition, desiredPostition, dt, &timeInPosition );	
 		if ( timeInPosition > 5 && secondPosition == 0 )
 		{
-			us[]={nextPosition,nextPosition,nextPosition};
-			desiredPostition = getReference(ys,us);
+			us[0] = nextPosition;
+			us[1] = nextPosition;
+			us[2] = nextPosition;
+	//		desiredPostition = getReference(ys,us);
 			secondPosition = 1;
 		}
 		else if ( timeInPosition > 5 && secondPosition == 1 )
 		{ 
-			us[] = {firstPostition, firstPostition, firstPostition};
-			desiredPostition = getReference(ys,us);
+			us[0] = firstPostition; 
+			us[1] = firstPostition; 
+			us[2] = firstPostition;
+	//		desiredPostition = getReference(ys,us);
 			secondPosition = 0;
 		}	 
-		fprintf(f, "%f	%f	%f	%f %f \n", runTime, desiredPostition, currentPosition, thrust, integral);
+		printf("%f %f %f \n",desiredPostition, currentPosition, desiredPostition - currentPosition);
+		fprintf(f, "%f	%f \n", desiredPostition, currentPosition);
 	}
 	
 	FILE * gnuplotPipe = popen ("gnuplot -persistent", "w");
