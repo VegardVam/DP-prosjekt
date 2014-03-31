@@ -173,8 +173,8 @@ double inPosition( int *inPositionCount, double currentPosition, double desiredP
 
 int main(int argc, char* argv[])
 {
-	int temporaryCount, result, sensorValue, errorFlag, i, dpTime;
-	double thrust, currentPosition, desiredPostition, dt, runTime, firstPostition, nextPosition;
+	int temporaryCount, result, sensorValue, errorFlag, i;
+	double thrust, currentPosition, desiredPostition, dt, dpTime,  runTime, firstPostition, nextPosition;
 	int inPositionCount = 0;
 	double integral=0;
 	double diff = 0;
@@ -197,11 +197,11 @@ int main(int argc, char* argv[])
 	printf("Please state the next position you would like the boat to be positioned in: ");
 	scanf("%lf", &nextPosition);
 	printf("For how long do you want the program to run? The DP-program will alternate to place the boat to the desired position until the time is over. Specify time in seconds: ");
-	scanf("%d", &dpTime);
+	scanf("%lf", &dpTime);
   	desiredPostition = firstPostition;
 	double us[]={desiredPostition,desiredPostition,desiredPostition}; // < input from reference system
-	double currentPositionTable[dpTime*100];
-	double desiredPositionTable[dpTime*100];
+	double currentPositionTable[(int) (dpTime*100)];
+	double desiredPositionTable[(int) (dpTime*100)];
 	struct timespec dtStart, runTimeStart;
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
