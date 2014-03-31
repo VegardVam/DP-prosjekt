@@ -173,15 +173,19 @@ double inPosition( int *inPositionCount, double currentPosition, double desiredP
 
 int main(int argc, char* argv[])
 {
-	int temporaryCount, result, sensorValue, errorFlag, i, secondPosition;
-	double thrust, currentPosition, desiredPostition, dt, runTime, dpTime, firstPostition, nextPosition;
+	int temporaryCount, result, sensorValue, errorFlag, i, dpTime;
+	double thrust, currentPosition, desiredPostition, dt, runTime, firstPostition, nextPosition;
 	int inPositionCount = 0;
 	double integral=0;
 	double diff = 0;
 	double ys[]={0,0,0};    // < output from reference system
 	double timeInPosition = 0;
+
+
+	int secondPosition = 0;
+	int count = 0;	// counts number of iteration for while-loop in main to know the lenght for the vtfFile
 	FILE *f = fopen("dataTable.dat", "w");
-	char * commandsForGnuplot[] = {"set title \"DP-oversikt\"", "plot 'dataTable.dat' using 1:2 title 'Desired position' with lines, 'dataTable.dat' using 1:3 title 'Position' with lines, 'dataTable.dat' using 1:4 title 'Thrust' with lines, 'dataTable.dat' using 1:5 title 'Integral' with lines"};
+	char * commandsForGnuplot[] = {"set title \"DP-oversikt\"", "plot 'dataTable.dat' using 1:2 title 'Desired position' with lines, 'dataTable.dat' using 1:3 title 'Position' with lines"}; //, 'dataTable.dat' using 1:4 title 'Thrust' with lines, 'dataTable.dat' using 1:5 title 'Integral' with lines"};
 	
 	if (f == NULL)	
 	{
@@ -193,10 +197,12 @@ int main(int argc, char* argv[])
 	printf("Please state the next position you would like the boat to be positioned in: ");
 	scanf("%lf", &nextPosition);
 	printf("For how long do you want the program to run? The DP-program will alternate to place the boat to the desired position until the time is over. Specify time in seconds: ");
+	scanf("%d", &dpTime);
   	desiredPostition = firstPostition;
 	double us[]={desiredPostition,desiredPostition,desiredPostition}; // < input from reference system
+	double currentPositionTable[dpTime*100];
+	double desiredPositionTable[dpTime*100];
 	struct timespec dtStart, runTimeStart;
-	scanf("%lf", &dpTime);
 	CPhidgetServoHandle servo = 0;
 	CPhidgetInterfaceKitHandle ifKit = 0;
 	errorFlag = initSensor(&ifKit) + initServo(&servo);
@@ -208,6 +214,7 @@ int main(int argc, char* argv[])
 	clock_gettime(CLOCK_REALTIME, &runTimeStart);
 	while ( dpTime>runTime ) 
 	{
+		++count;
 		dt = getTime( dtStart );
   		clock_gettime( CLOCK_REALTIME, &dtStart );
 		currentPosition = getDistance( ifKit, &diff );
@@ -221,7 +228,7 @@ int main(int argc, char* argv[])
 			us[0] = nextPosition;
 			us[1] = nextPosition;
 			us[2] = nextPosition;
-	//		desiredPostition = getReference(ys,us);
+			timeInPosition = 0;
 			secondPosition = 1;
 		}
 		else if ( timeInPosition > 5 && secondPosition == 1 )
@@ -229,11 +236,11 @@ int main(int argc, char* argv[])
 			us[0] = firstPostition; 
 			us[1] = firstPostition; 
 			us[2] = firstPostition;
-	//		desiredPostition = getReference(ys,us);
+			timeInPosition = 0;
 			secondPosition = 0;
 		}	 
-		printf("%f %f %f \n",desiredPostition, currentPosition, desiredPostition - currentPosition);
-		fprintf(f, "%f	%f \n", desiredPostition, currentPosition);
+		printf("%f %f %f %d \n",desiredPostition, currentPosition, desiredPostition - currentPosition, secondPosition);
+		fprintf(f, "%f	%f	%f	%f %f \n", runTime, desiredPostition, currentPosition, thrust, integral);
 	}
 	
 	FILE * gnuplotPipe = popen ("gnuplot -persistent", "w");
@@ -243,8 +250,9 @@ int main(int argc, char* argv[])
    	fprintf(gnuplotPipe, "%s \n", commandsForGnuplot[i]); //Send commands to gnuplot one by one.
 	}
 
-	printf("Disengage. Press any key to Continue\n");
+	printf("DP-program ferdig. Total kjøretid: %.2f.\n Trykk en tast for å skrive .vtf filen som GLView trenger for visualisering. \n", runTime);
 	getchar();
+	produceVtfFile( currentPositionTable, desiredPositionTable, count );
 	CPhidgetServo_setEngaged (servo, 0, 0);
 	printf("Press any key to end\n");
 	getchar();
@@ -255,3 +263,41 @@ int main(int argc, char* argv[])
 	pclose(gnuplotPipe);
 	return 0;	
 }
+
+void produceVtfFile(double currentPositionTable[], double desiredPositionTable[], int count)
+{
+ 
+	FILE *vtfFile = fopen("/home/lokal/Ceetron/GLvInova_9.1-3_x86_64/tutorials/simulering.vtf","w");
+  
+	int line, step;
+	fprintf(vtfFile,"*VTF-1.00\n\n\n");
+	fprintf(vtfFile,"*NODES 1\n");
+	fprintf(vtfFile,"0 14.5 0\n0 36.5 0\n77 14.5 0\n77 36.5 0\n0 14.5 10\n0 36.5 10\n77 14.5 10\n77 36.5 10\n\n\n");
+	fprintf(vtfFile,"*NODES 2\n");
+	fprintf(vtfFile,"0 0 0\n0 51 0\n149 51 0\n149 0 0\n\n\n");
+	fprintf(vtfFile,"*ELEMENTS 1\n%%NODES #1\n%%QUADS\n1 2 4 3\n5 6 8 7\n1 2 6 5\n3 4 8 7\n1 3 7 5\n2 4 8 6\n\n\n"); 
+	fprintf(vtfFile,"*ELEMENTS 2\n%%NODES #2\n%%QUADS\n1 2 3 4\n\n");
+	fprintf(vtfFile,"*GLVIEWGEOMETRY 1\n%%ELEMENTS\n1 2\n\n");
+ 
+	for ( line=0 ; line<count ; line++ )
+	{
+		fprintf( vtfFile,"*RESULTS %d\n", line+1 );
+      	fprintf( vtfFile,"%%DIMENSION 3\n" );
+ 	    fprintf( vtfFile,"%%PER_NODE #1\n" );
+ 	    for ( step = 0 ; step < 8 ; step++ )
+ 	    {
+	        fprintf( vtfFile,"%f 0 0\n", currentPositionTable[line] );
+        }
+	    fprintf(vtfFile,"\n");
+	}
+
+	fprintf(vtfFile,"*GLVIEWVECTOR 1\n");
+    fprintf(vtfFile,"%%NAME \n");
+  
+    for ( line=0 ; line < count ; line++ )
+    {
+        fprintf(vtfFile,"%%STEP %d\n %d\n",line,line);
+    }
+    return;
+}
+
